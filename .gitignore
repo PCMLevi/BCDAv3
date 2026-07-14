@@ -4,3 +4,4 @@ Data/
 .vscode/
 Scripts/Untitled*
 Scripts/Credentials.py
+Scripts/*.ipynb
