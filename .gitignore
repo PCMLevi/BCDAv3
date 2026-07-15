@@ -5,3 +5,4 @@ Data/
 Scripts/Untitled*
 Scripts/Credentials.py
 Scripts/*.ipynb
+Scripts/__pycache__
