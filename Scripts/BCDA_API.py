@@ -43,7 +43,7 @@ params = {
     "_since": timestamp
 }
 
-TIMEOUT_SECONDS = 100000000000000  # 1 hour max for polling
+TIMEOUT_SECONDS = 100000000000000  
 
 # ============================================================
 # Authentication
@@ -108,7 +108,7 @@ def start_export_job(access_token):
 def poll_job(job_url):
     print("Polling job status...")
     start_time = time.time()
-    backoff = 5  # initial backoff in seconds
+    backoff = 5 
 
     while True:
         
@@ -128,7 +128,7 @@ def poll_job(job_url):
             print("Network error while polling:", e)
             print(f"Retrying in {backoff} seconds...")
             time.sleep(backoff)
-            backoff = min(backoff * 2, 60)  # exponential backoff
+            backoff = min(backoff * 2, 60)  
             continue
 
         print("HTTP Status:", response.status_code)
@@ -186,7 +186,7 @@ def download_file(output_file, headers, ts, idx):
 
     max_retries = 5
     retry_count = 0
-    backoff = 5  # initial backoff in seconds
+    backoff = 5  
 
     while retry_count < max_retries:
         try:
@@ -200,7 +200,7 @@ def download_file(output_file, headers, ts, idx):
             continue
 
         if response.status_code == 200:
-            break  # success
+            break 
 
         if response.status_code == 429:
             retry_after = int(response.headers.get("Retry-After", backoff))
@@ -321,10 +321,6 @@ def main():
 
     access_token = get_access_token()
 
-    #poll_headers = {
-    #    "Accept": "application/fhir+json",
-    #    "Authorization": f"Bearer {access_token}",
-    #}
     print(timestamp)
 
     job_url = start_export_job(access_token)
@@ -350,7 +346,7 @@ def main():
 
     print("Pipeline finished.")
 
-# ============================================================
+
 
 if __name__ == "__main__":
     main()
