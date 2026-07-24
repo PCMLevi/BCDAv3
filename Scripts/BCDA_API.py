@@ -32,9 +32,7 @@ timestamp = timestamp['watermark'].iloc[0]
 timestamp = pd.to_datetime(timestamp).isoformat()
 #timestamp = '2026-03-26T08:00:00.000-05:00'
 print(timestamp)
-# ============================================================
-# Configuration
-# ============================================================
+
 
 TOKEN_URL = "https://api.bcda.cms.gov/auth/token"
 EXPORT_URL = f"https://api.bcda.cms.gov/api/v3/Patient/$export"
@@ -220,9 +218,6 @@ def download_file(output_file, headers, ts, idx):
         f.write(response.content)
 
     print("Saved:", filename)
-# ============================================================
-# Parallel Download Controller
-# ============================================================
 
 def download_outputs(job_data, headers, ts):
 

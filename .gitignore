@@ -6,3 +6,5 @@ Scripts/Untitled*
 Scripts/Credentials.py
 Scripts/*.ipynb
 Scripts/__pycache__/
+Scripts/fix_api
+Scripts/test_eob
