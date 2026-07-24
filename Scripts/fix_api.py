@@ -3,9 +3,9 @@ import requests
 
 access_token = get_access_token()
 # Example: job_url from start_export_job() Content-Location header
-job_url = "https://api.bcda.cms.gov/api/v2/jobs"
+job_url = "https://api.bcda.cms.gov/api/v2/jobs/178696"
 
-response = requests.get(
+response = requests.delete(
     job_url,
     headers={
         "Accept": "application/fhir+json",
