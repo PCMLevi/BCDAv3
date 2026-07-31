@@ -61,7 +61,7 @@ def main():
     run_module("BCDA API", BCDA_API.main)
     if any(Path(r'C:\BCDA_V3\Data').glob('Coverage*.ndjson')):
         run_module("Coverage", Coverage.main)
-    if any(Path(r'C:\BCDA_V3\Data').glob('Patients*.ndjson')):
+    if any(Path(r'C:\BCDA_V3\Data').glob('Patient*.ndjson')):
         run_module("Patients", Patients.main)
     if any(Path(r'C:\BCDA_V3\Data').glob('ExplanationOfBenefit*.ndjson')):
         run_module("EOB", EOB.main)
