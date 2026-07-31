@@ -1,14 +1,16 @@
-import requests
-import time
-import sys
-from datetime import datetime, timedelta, timezone
-import zipfile
 import os
-from pathlib import Path
-from Credentials import CLIENT_ID, CLIENT_SECRET, engine_DEV_Test as engine
-from sqlalchemy import text
-import pandas as pd
+import sys
+import time
+import zipfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime, timezone
+from pathlib import Path
+
+import pandas as pd
+import requests
+from Credentials import CLIENT_ID, CLIENT_SECRET
+from Credentials import engine_DEV_Test as engine
+from sqlalchemy import text
 
 Zip_path = Path(r"C:\BCDA_V3\Data")
 
@@ -16,8 +18,11 @@ Zip_path.mkdir(parents=True, exist_ok=True)
 
 os.chdir(Zip_path)
 
-onedrive = next(p for p in Path(os.environ["USERPROFILE"]).iterdir()
-                if p.name.startswith("OneDrive - "))
+onedrive = next(
+    p
+    for p in Path(os.environ["USERPROFILE"]).iterdir()
+    if p.name.startswith("OneDrive - ")
+)
 
 query = """
     Select top 1 watermark
@@ -25,27 +30,24 @@ query = """
     order by id desc
 """
 
-timestamp = pd.read_sql(query,
-    engine
-)
-timestamp = timestamp['watermark'].iloc[0]
+timestamp = pd.read_sql(query, engine)
+timestamp = timestamp["watermark"].iloc[0]
 timestamp = pd.to_datetime(timestamp).isoformat()
-#timestamp = '2026-03-26T08:00:00.000-05:00'
+# timestamp = '2026-03-26T08:00:00.000-05:00'
 print(timestamp)
 
 
 TOKEN_URL = "https://api.bcda.cms.gov/auth/token"
-EXPORT_URL = f"https://api.bcda.cms.gov/api/v3/Patient/$export"
+EXPORT_URL = "https://api.bcda.cms.gov/api/v3/Patient/$export"
 
-params = {
-    "_since": timestamp
-}
+params = {"_since": timestamp}
 
-TIMEOUT_SECONDS = 100000000000000  
+TIMEOUT_SECONDS = 100000000000000
 
 # ============================================================
 # Authentication
 # ============================================================
+
 
 def get_access_token():
     print("Authenticating...")
@@ -69,9 +71,11 @@ def get_access_token():
     print("Access token acquired (prefix):", access_token[:20], "...")
     return access_token
 
+
 # ============================================================
 # Start Export Job
 # ============================================================
+
 
 def start_export_job(access_token):
     headers = {
@@ -99,19 +103,21 @@ def start_export_job(access_token):
     print("Job Tracking URL:", job_url)
     return job_url
 
+
 # ============================================================
 # Poll Job Status
 # ============================================================
 
+
 def poll_job(job_url):
     print("Polling job status...")
     start_time = time.time()
-    backoff = 5 
+    backoff = 5
 
     while True:
-        
+
         access_token = get_access_token()
-        
+
         headers = {
             "Accept": "application/fhir+json",
             "Authorization": f"Bearer {access_token}",
@@ -126,7 +132,7 @@ def poll_job(job_url):
             print("Network error while polling:", e)
             print(f"Retrying in {backoff} seconds...")
             time.sleep(backoff)
-            backoff = min(backoff * 2, 60)  
+            backoff = min(backoff * 2, 60)
             continue
 
         print("HTTP Status:", response.status_code)
@@ -172,6 +178,7 @@ def poll_job(job_url):
         time.sleep(backoff)
         backoff = min(backoff * 2, 30)
 
+
 def download_file(output_file, headers, ts, idx):
     file_type = output_file.get("type", "UnknownType")
     file_url = output_file.get("url")
@@ -184,7 +191,7 @@ def download_file(output_file, headers, ts, idx):
 
     max_retries = 5
     retry_count = 0
-    backoff = 5  
+    backoff = 5
 
     while retry_count < max_retries:
         try:
@@ -198,7 +205,7 @@ def download_file(output_file, headers, ts, idx):
             continue
 
         if response.status_code == 200:
-            break 
+            break
 
         if response.status_code == 429:
             retry_after = int(response.headers.get("Retry-After", backoff))
@@ -219,6 +226,7 @@ def download_file(output_file, headers, ts, idx):
 
     print("Saved:", filename)
 
+
 def download_outputs(job_data, headers, ts):
 
     outputs = job_data.get("output", [])
@@ -234,21 +242,17 @@ def download_outputs(job_data, headers, ts):
         for idx, output_file in enumerate(outputs, start=1):
 
             futures.append(
-                executor.submit(
-                    download_file,
-                    output_file,
-                    headers,
-                    ts,
-                    idx
-                )
+                executor.submit(download_file, output_file, headers, ts, idx)
             )
 
         for future in as_completed(futures):
             future.result()
 
+
 # ============================================================
 # Zipping Files
 # ============================================================
+
 
 def zip_files(Zip_path, ts):
 
@@ -263,27 +267,29 @@ def zip_files(Zip_path, ts):
     storage_folder.mkdir(parents=True, exist_ok=True)
 
     zip_name = storage_folder / f"Patient_v3_{ts}.zip"
-    with zipfile.ZipFile(zip_name, 'w', compression=zipfile.ZIP_DEFLATED) as zipf:
-        for file in Path(Zip_path).glob('Patient*.ndjson'):
+    with zipfile.ZipFile(zip_name, "w", compression=zipfile.ZIP_DEFLATED) as zipf:
+        for file in Path(Zip_path).glob("Patient*.ndjson"):
             zipf.write(file, os.path.basename(file))
 
     zip_name = storage_folder / f"ExplanationOfBenefit_v3_{ts}.zip"
-    with zipfile.ZipFile(zip_name, 'w', compression=zipfile.ZIP_DEFLATED) as zipf:
-        for file in Path(Zip_path).glob('ExplanationOfBenefit*.ndjson'):
+    with zipfile.ZipFile(zip_name, "w", compression=zipfile.ZIP_DEFLATED) as zipf:
+        for file in Path(Zip_path).glob("ExplanationOfBenefit*.ndjson"):
             zipf.write(file, os.path.basename(file))
 
     zip_name = storage_folder / f"Coverage_v3_{ts}.zip"
-    with zipfile.ZipFile(zip_name, 'w', compression=zipfile.ZIP_DEFLATED) as zipf:
-        for file in Path(Zip_path).glob('Coverage*.ndjson'):
+    with zipfile.ZipFile(zip_name, "w", compression=zipfile.ZIP_DEFLATED) as zipf:
+        for file in Path(Zip_path).glob("Coverage*.ndjson"):
             zipf.write(file, os.path.basename(file))
+
 
 # ============================================================
 # Watermark
 # ============================================================
 
+
 def update_watermark(engine):
 
-    Watermark = datetime.now(timezone.utc).isoformat(timespec='milliseconds')
+    Watermark = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
     date = pd.Timestamp.now()
 
     query = text("""
@@ -303,14 +309,13 @@ def update_watermark(engine):
 
     with engine.begin() as conn:
 
-        conn.execute(query, {
-            "watermark": Watermark,
-            "date": date
-        })
+        conn.execute(query, {"watermark": Watermark, "date": date})
+
 
 # ============================================================
 # Main Pipeline
 # ============================================================
+
 
 def main():
 
@@ -340,7 +345,6 @@ def main():
     zip_files(Zip_path, ts)
 
     print("Pipeline finished.")
-
 
 
 if __name__ == "__main__":

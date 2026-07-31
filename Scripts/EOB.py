@@ -163,7 +163,7 @@ def process_eob_base(df_eob: pl.DataFrame):
         safe_expr(
             df_eob_base,
             'type',
-            pl.col('type').struct.field('coding').list.get(0).struct.field('display'),
+            pl.col('type').struct.field('coding').list.get(0).struct.field('display').str.to_titlecase(),
             'type_display'
         ),
         safe_expr(
