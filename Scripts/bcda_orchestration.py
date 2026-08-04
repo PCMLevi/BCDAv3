@@ -6,6 +6,8 @@ import os
 import logging
 from datetime import datetime
 from zoneinfo import ZoneInfo
+from prefect import task, flow
+from datetime import timedelta
 
 onedrive = next(p for p in Path(os.environ["USERPROFILE"]).iterdir()
                 if p.name.startswith("OneDrive - "))
@@ -33,11 +35,13 @@ logging.getLogger().addHandler(console_handler)
 # ----------------- DATA DIRECTORY -----------------
 data_dir = Path(r"C:\BCDA_V3\Data")
 
+@task
 def start_sql_job():
     with engine.begin() as conn:
         conn.execute(text("EXEC msdb.dbo.sp_start_job @job_name = :job"),
                 {"job": "BCDAv3_Run_ALL"})
-
+        
+@task
 def unlink_files():
     for file in data_dir.iterdir():
         try:
@@ -46,7 +50,7 @@ def unlink_files():
         except Exception as e:
             logging.error(f"Failed to delete {file.name}: {e}")
 
-
+@task
 def run_module(name, func):
     try:
         func()
@@ -55,6 +59,7 @@ def run_module(name, func):
         logging.exception(f"{name} failed with error: {e}")
         raise
 
+@flow(name = 'BCDA Pipeline Orchestration')
 def main():
     logging.info("Starting BCDA pipeline")
     run_module("unlink Files",unlink_files)
@@ -70,4 +75,16 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    base_path = Path(r"C:\BCDA_V3")
+
+    main.from_source(
+        source=str(base_path),
+        entrypoint="Scripts/bcda_orchestration.py:main",
+    ).deploy(
+        name="BCDA Pipeline",
+        work_pool_name="default",
+        schedule = {
+            'cron': "0 2 */3 * *",  
+            'timezone': "America/Chicago",
+        }
+    )
