@@ -159,6 +159,7 @@ def process_coverage_contained(df_coverage: pl.DataFrame):
             pl.col("meta_main").struct.field("lastUpdated"),
             pl.col("filename").str.split("\\").list.get(-1).alias("filename"),
             pl.col("name").str.to_titlecase().alias("name"),
+            pl.lit(now).alias("extract_date"),
         )
         .select(column_names)
     )
@@ -180,7 +181,8 @@ def import_coverage_data(file_path: Path = file_path):
 
 
 def main():
-    import_coverage_data(file_path)
+    if any(Path(r'C:\BCDA_V3\Data').glob('Coverage*.ndjson')):
+        import_coverage_data(file_path)
 
 
 if __name__ == "__main__":

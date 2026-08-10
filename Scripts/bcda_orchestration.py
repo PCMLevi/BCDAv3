@@ -64,12 +64,9 @@ def main():
     logging.info("Starting BCDA pipeline")
     run_module("unlink Files",unlink_files)
     run_module("BCDA API", BCDA_API.main)
-    if any(Path(r'C:\BCDA_V3\Data').glob('Coverage*.ndjson')):
-        run_module("Coverage", Coverage.main)
-    if any(Path(r'C:\BCDA_V3\Data').glob('Patient*.ndjson')):
-        run_module("Patients", Patients.main)
-    if any(Path(r'C:\BCDA_V3\Data').glob('ExplanationOfBenefit*.ndjson')):
-        run_module("EOB", EOB.main)
+    run_module("Coverage", Coverage.main)
+    run_module("Patients", Patients.main)
+    run_module("EOB", EOB.main)
     run_module("unlink Files",unlink_files)
     run_module("Starting SQL PROC BCDA_v3_run_all",start_sql_job)
 

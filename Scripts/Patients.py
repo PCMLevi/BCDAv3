@@ -129,7 +129,8 @@ def import_patient_data(file_path: Path = file_path):
 
 
 def main():
-    import_patient_data(file_path)
+    if any(Path(r'C:\BCDA_V3\Data').glob('Patient*.ndjson')):
+        import_patient_data(file_path)
 
 
 if __name__ == "__main__":

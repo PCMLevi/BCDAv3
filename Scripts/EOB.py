@@ -45,12 +45,12 @@ table_names = [
     "dbo.eob_item_ext_staging_v3",
     "dbo.eob_supporting_staging_v3",
     "dbo.eob_careteam_staging_v3",
-    'eob_hemoglobin_staging_v3',
+    'dbo.eob_hemoglobin_staging_v3',
 ]
 
 file_path = Path(r'C:\BCDA_V3\Data')
 
-now = datetime.now().strftime('%m-%d-%Y %H:%M:%S')
+now = datetime(2026, 8, 6, 7, 4, 30)
 
 MIN_SQL_DATE = datetime(1753, 1, 1)
 
@@ -1117,12 +1117,16 @@ def import_eob_data(file_path: Path = file_path):
             con.close()
 
 def main():
-    truncate_tables(table_names)
-    
-    files = file_path.glob("ExplanationOfBenefit*.ndjson")
-    
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        list(executor.map(import_eob_data, files))
+    if any(Path(r'C:\BCDA_V3\Data').glob('ExplanationOfBenefit*.ndjson')):
+        print('strating')
+        truncate_tables(table_names)
+        print('tables truncated')
+
+        files = file_path.glob("ExplanationOfBenefit*.ndjson")
+        print(f"Processing {len(list(files))} files...")
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            list(executor.map(import_eob_data, files))
     
     
 if __name__ == "__main__":
