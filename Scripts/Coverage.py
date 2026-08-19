@@ -36,6 +36,9 @@ def load_to_sql(df: pd.DataFrame, table_name: str):
 
 
 def process_coverage_basetable(df_coverage: pl.DataFrame):
+    
+
+    
     df_coverage_base = (
         df_coverage.select(
             "id",
@@ -45,7 +48,7 @@ def process_coverage_basetable(df_coverage: pl.DataFrame):
             "payor",
             "status",
             "subscriberId",
-            "filename",
+            "filename"
         )
         .explode("payor")
         .unnest("payor")
@@ -61,19 +64,23 @@ def process_coverage_basetable(df_coverage: pl.DataFrame):
             pl.col("filename").str.split("\\").list.get(-1).alias("filename"),
             pl.col("id").alias("coverage_id"),
         )
-        .select(
-            "coverage_id",
-            "patient_id",
-            "reference",
-            "start",
-            "end",
-            "status",
-            "subscriberId",
-            "lastUpdated",
-            "filename",
-            "extract_date",
-        )
     )
+    if 'end' not in df_coverage_base.columns:
+        df_coverage_base = df_coverage_base.with_columns(pl.lit(None).alias('end'))
+        
+    df_coverage_base = df_coverage_base.select(
+        "coverage_id",
+        "patient_id",
+        "reference",
+        "start",
+        "end",
+        "status",
+        "subscriberId",
+        "lastUpdated",
+        "filename",
+        "extract_date",
+    )
+    
     return df_coverage_base.to_pandas()
 
 

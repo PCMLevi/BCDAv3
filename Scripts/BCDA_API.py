@@ -33,7 +33,7 @@ query = """
 timestamp = pd.read_sql(query, engine)
 timestamp = timestamp["watermark"].iloc[0]
 timestamp = pd.to_datetime(timestamp).isoformat()
-# timestamp = '2026-03-26T08:00:00.000-05:00'
+#timestamp = '2026-08-07T08:00:00.000-05:00'
 print(timestamp)
 
 

@@ -74,7 +74,7 @@ def load_to_sql(df: pd.DataFrame, table_name: str):
     if df.empty:
         return
     with engine.begin() as conn:
-        df.to_sql(table_name, conn, if_exists='append', index=False, chunksize=5000)
+        df.to_sql(table_name, conn, if_exists='append', index=False, chunksize=25000)
 
 def process_eob_base(df_eob: pl.DataFrame):  
     
@@ -1122,10 +1122,10 @@ def main():
         truncate_tables(table_names)
         print('tables truncated')
 
-        files = file_path.glob("ExplanationOfBenefit*.ndjson")
+        files = list(file_path.glob("ExplanationOfBenefit*.ndjson"))
         print(f"Processing {len(list(files))} files...")
 
-        with ThreadPoolExecutor(max_workers=2) as executor:
+        with ThreadPoolExecutor(max_workers=4) as executor:
             list(executor.map(import_eob_data, files))
     
     
