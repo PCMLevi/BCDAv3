@@ -42,7 +42,7 @@ EXPORT_URL = "https://api.bcda.cms.gov/api/v3/Patient/$export"
 
 params = {"_since": timestamp}
 
-TIMEOUT_SECONDS = 100000000000000
+TIMEOUT_SECONDS = 10000
 
 # ============================================================
 # Authentication
@@ -66,7 +66,11 @@ def get_access_token():
     access_token = token_json.get("access_token")
     if not access_token:
         print("No access_token found in token response:", token_json)
-        sys.exit(1)
+        raise RuntimeError(
+            f"Failed to get access token. "
+            f"Status: {response.status_code}, "
+            f"Body: {response.text}"
+        )
 
     print("Access token acquired (prefix):", access_token[:20], "...")
     return access_token
@@ -93,12 +97,20 @@ def start_export_job(access_token):
     if response.status_code != 202:
         print("Failed to start export job. Status:", response.status_code)
         print("Body:", response.text)
-        sys.exit(1)
+        raise RuntimeError(
+            f"Failed to start BCDA export. "
+            f"Status: {response.status_code}, "
+            f"Body: {response.text}"
+        )
 
     job_url = response.headers.get("Content-Location")
     if not job_url:
         print("No Content-Location header found in export response.")
-        sys.exit(1)
+        raise RuntimeError(
+            f"Failed to start BCDA export. "
+            f"Status: {response.status_code}, "
+            f"Body: {response.text}"
+        )
 
     print("Job Tracking URL:", job_url)
     return job_url

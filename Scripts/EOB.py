@@ -50,7 +50,7 @@ table_names = [
 
 file_path = Path(r'C:\BCDA_V3\Data')
 
-now = datetime(2026, 8, 6, 7, 4, 30)
+now = datetime.now()
 
 MIN_SQL_DATE = datetime(1753, 1, 1)
 
@@ -348,7 +348,7 @@ def process_eob_adjudication(df_eob: pl.DataFrame):
             pl.col('id').alias('claim_id'),
             pl.col('meta').struct.field('lastUpdated'),
             pl.col('filename').str.split('/').list.get(-1).alias('filename'),
-            pl.lit(now).alias('extract_date'),
+            pl.lit(now).alias('extract_date')
         )
     )
     expres = [
@@ -367,13 +367,13 @@ def process_eob_adjudication(df_eob: pl.DataFrame):
         safe_expr(
             df_eob_adjudication,
             'amount',
-            pl.col('amount').struct.field('value'),
+            pl.col('amount').struct.field('value').cast(pl.Float64, strict=False),
             'amount'
         ),
         safe_expr(
             df_eob_adjudication,
             'value',
-            pl.col('value'),
+            pl.col('value').cast(pl.Float64, strict=False),
             'value'
         )
     ]
