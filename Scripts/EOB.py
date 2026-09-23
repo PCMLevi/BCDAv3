@@ -81,6 +81,7 @@ def process_eob_base(df_eob: pl.DataFrame):
     column_names = [
             'claim_id',
             'cntrl_num',
+            'ptnt_cntrl_num',
             'billablePeriod_start',
             'billablePeriod_end',
             'payment_amount',
@@ -104,16 +105,33 @@ def process_eob_base(df_eob: pl.DataFrame):
     
     df_eob_base = (
         df_eob
-        .explode('identifier')
         .with_columns(
-            pl.col('identifier').struct.field('value').alias('cntrl_num'),
-            pl.col('identifier').struct.field('system').alias('idt_system'),
-            pl.col('id').alias('claim_id')
-        )
-        .filter(pl.col('idt_system').is_not_null())
-        .with_columns(
-            pl.lit(now).alias('extract_date'),
-            pl.col("filename").str.split("/").list.get(-1).alias("filename")
+            pl.col("identifier")
+            .list.filter(
+                pl.element().struct.field("system")
+                == "https://bluebutton.cms.gov/identifiers/CLM-CNTL-NUM"
+            )
+            .list.first()
+            .struct.field("value")
+            .alias("cntrl_num"),
+    
+            pl.col("identifier")
+            .list.filter(
+                pl.element().struct.field("system")
+                == "https://bluebutton.cms.gov/identifiers/CLM-PTNT-CNTL-NUM"
+            )
+            .list.first()
+            .struct.field("value")
+            .alias("ptnt_cntrl_num"),
+    
+            pl.col("id").alias("claim_id"),
+    
+            pl.lit(now).alias("extract_date"),
+    
+            pl.col("filename")
+            .str.split("/")
+            .list.get(-1)
+            .alias("filename"),
         )
     )
     
@@ -153,6 +171,12 @@ def process_eob_base(df_eob: pl.DataFrame):
             'cntrl_num',
             pl.col('cntrl_num').str.replace_all(r'\s+',', '),
             'cntrl_num'
+        ),
+        safe_expr(
+            df_eob_base,
+            'ptnt_cntrl_num',
+            pl.col('ptnt_cntrl_num').str.replace_all(r'\s+',', '),
+            'ptnt_cntrl_num'
         ),
         safe_expr(
             df_eob_base,
@@ -653,18 +677,18 @@ def process_eob_item(df_eob: pl.DataFrame):
     ]
     
     expr = [
-        safe_expr(
-            df_eob,
-            'productOrService',
-            pl.col('productOrService').struct.field('coding').list.get(0).struct.field('code'),
-            'product_service_code'
-        ),
-        safe_expr(
-            df_eob,
-            'productOrService',
-            pl.col('productOrService').struct.field('coding').list.get(0).struct.field('system').str.split('/').list.get(-1),
-            'product_service_system'
-        ),   
+        #safe_expr(
+        #    df_eob,
+        #    'productOrService',
+        #    pl.col('productOrService').struct.field('coding').list.get(0).struct.field('code'),
+        #    'product_service_code'
+        #),
+        #safe_expr(
+        #    df_eob,
+        #    'productOrService',
+        #    pl.col('productOrService').struct.field('coding').list.get(0).struct.field('system').str.split('/').list.get(-1),
+        #    'product_service_system'
+        #),   
         safe_expr(
             df_eob,
             'quantity',
@@ -744,9 +768,44 @@ def process_eob_item(df_eob: pl.DataFrame):
             'servicedDate'
         ),
     ]
+
+    if 'productOrService' in df_eob.columns:
+        product_service_schema = df_eob.schema['productOrService']
+
+        if 'coding' in [field.name for field in product_service_schema.fields]:
+            product_service_code_expr = safe_expr(
+                df_eob,
+                'productOrService',
+                pl.col('productOrService')
+                .struct.field('coding')
+                .list.get(0)
+                .struct.field('code'),
+                'product_service_code'
+            )
+
+            product_service_system_expr = safe_expr(
+                df_eob,
+                'productOrService',
+                pl.col('productOrService')
+                .struct.field('coding')
+                .list.get(0)
+                .struct.field('system')
+                .str.split('/')
+                .list.get(-1),
+                'product_service_system'
+            )
+        else:
+            product_service_code_expr = pl.lit(None).alias('product_service_code')
+            product_service_system_expr = pl.lit(None).alias('product_service_system')
+    else:
+        product_service_code_expr = pl.lit(None).alias('product_service_code')
+        product_service_system_expr = pl.lit(None).alias('product_service_system')
+
     df_eob_item = (
         df_eob
         .with_columns(expr)
+        .with_columns(product_service_code_expr)
+        .with_columns(product_service_system_expr)
         .select(column_names)
     )
         
@@ -845,19 +904,26 @@ def process_eob_item_ext(df_eob: pl.DataFrame):
         )
     )
     
+    
     expres = [
+        #safe_expr(
+        #    df_eob_item_ext,
+        #    'valueCoding',
+        #    pl.col('valueCoding').struct.field('code'),
+        #    'extension_code'
+        #),
         safe_expr(
             df_eob_item_ext,
-            'valueCoding',
-            pl.col('valueCoding').struct.field('code'),
-            'extension_code'
+            'valueDecimal',
+            pl.col('valueDecimal'),
+            'valueDecimal'
         ),
-        safe_expr(
-            df_eob_item_ext,
-            'valueCoding',
-            pl.col('valueCoding').struct.field('display'),
-            'extension_display'
-        ),
+        #safe_expr(
+        #    df_eob_item_ext,
+        #    'valueCoding',
+        #    pl.col('valueCoding').struct.field('display'),
+        #    'extension_display'
+        #),
         safe_expr(
             df_eob_item_ext,
             'patient',
@@ -878,9 +944,59 @@ def process_eob_item_ext(df_eob: pl.DataFrame):
         )
     ]
     
+    if 'valueCoding' in df_eob_item_ext.columns:
+        valuecoding_columns = df_eob_item_ext.unnest('valueCoding').columns
+
+        if 'code' in valuecoding_columns:
+            valuecoding_code_expr = safe_expr(
+                df_eob_item_ext,
+                'valueCoding',
+                pl.col('valueCoding').struct.field('code'),
+                'extension_code'
+            )
+        else:
+            valuecoding_code_expr = safe_expr(
+                df_eob_item_ext,
+                'valueCoding',
+                pl.lit(None),
+                'extension_code'
+            )
+
+        if 'display' in valuecoding_columns:
+            valuecoding_display_expr = safe_expr(
+                df_eob_item_ext,
+                'valueCoding',
+                pl.col('valueCoding').struct.field('display'),
+                'extension_display'
+            )
+        else:
+            valuecoding_display_expr = safe_expr(
+                df_eob_item_ext,
+                'valueCoding',
+                pl.lit(None),
+                'extension_display'
+            )
+
+    else:
+        valuecoding_code_expr = safe_expr(
+            df_eob_item_ext,
+            'valueCoding',
+            pl.col('valueCoding').struct.field('code'),
+            'extension_code'
+        )
+
+        valuecoding_display_expr = safe_expr(
+            df_eob_item_ext,
+            'valueCoding',
+            pl.col('valueCoding').struct.field('display'),
+            'extension_display'
+        )    
+
     df_eob_item_ext = (
         df_eob_item_ext
         .with_columns(expres)
+        .with_columns(valuecoding_code_expr)
+        .with_columns(valuecoding_display_expr)
         .select(column_names)
     )
     
@@ -928,6 +1044,12 @@ def process_eob_supporting(df_eob: pl.DataFrame):
             'valueQuantity',
             pl.col('valueQuantity').struct.field('value'),
             'supportingInfo_value'
+        ),
+        safe_expr(
+            df_eob_supporting,
+            'valueString',
+            pl.col('valueString'),
+            'valueString'
         ),
         safe_expr(
             df_eob_supporting,
